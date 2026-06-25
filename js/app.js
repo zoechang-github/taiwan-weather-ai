@@ -6,6 +6,9 @@
 const App = (() => {
   const $ = (id) => document.getElementById(id);
 
+  // 意見回饋會送到這個 GitHub repo 的 Issues
+  const GITHUB_REPO = 'zoechang-github/taiwan-weather-ai';
+
   let currentAppCode = '';       // 保存目前運作中的天氣 App 程式碼
   let proposedAppCode = '';      // 保存 AI 剛修改完、尚未套用的程式碼
   let currentController = null;  // 串流控制器
@@ -46,6 +49,12 @@ const App = (() => {
     $('settings-overlay').addEventListener('click', closeSettings);
     $('btn-save-settings').addEventListener('click', saveSettings);
     $('btn-toggle-key').addEventListener('click', toggleKeyVisibility);
+
+    // 意見回饋
+    $('btn-feedback').addEventListener('click', openFeedback);
+    $('btn-close-feedback').addEventListener('click', closeFeedback);
+    $('feedback-overlay').addEventListener('click', closeFeedback);
+    $('btn-submit-feedback').addEventListener('click', submitFeedback);
 
     // 歡迎畫面
     $('btn-welcome-start').addEventListener('click', handleWelcome);
@@ -130,6 +139,51 @@ const App = (() => {
     const isPassword = input.type === 'password';
     input.type = isPassword ? 'text' : 'password';
     $('btn-toggle-key').textContent = isPassword ? '🙈' : '👁';
+  }
+
+  // --- 意見回饋（送到 GitHub Issue） ---
+
+  function openFeedback() {
+    $('feedback-modal').classList.add('active');
+    $('feedback-overlay').classList.add('active');
+  }
+
+  function closeFeedback() {
+    $('feedback-modal').classList.remove('active');
+    $('feedback-overlay').classList.remove('active');
+  }
+
+  function submitFeedback() {
+    const type = $('feedback-type').value;
+    const text = $('feedback-text').value.trim();
+
+    if (!text) {
+      showToast('❌ 請先填寫您的意見', 'error');
+      return;
+    }
+
+    // 用意見內容組出 Issue 的標題與內文
+    const shortText = text.replace(/\s+/g, ' ').slice(0, 40);
+    const title = `[${type}] ${shortText}`;
+    const body =
+      `${text}\n\n` +
+      `---\n` +
+      `- 回饋類型：${type}\n` +
+      `- 來源：天氣 App 意見回饋\n` +
+      `- 裝置資訊：${navigator.userAgent}`;
+
+    // 組出 GitHub「建立新 Issue」的預填網址（零後端做法）
+    const url =
+      `https://github.com/${GITHUB_REPO}/issues/new` +
+      `?title=${encodeURIComponent(title)}` +
+      `&body=${encodeURIComponent(body)}` +
+      `&labels=feedback`;
+
+    window.open(url, '_blank', 'noopener');
+
+    $('feedback-text').value = '';
+    closeFeedback();
+    showToast('📨 已開啟 GitHub，請按「Submit new issue」完成送出', 'success');
   }
 
   // --- AI 對話與沙盒控制 ---

@@ -446,6 +446,13 @@ html, body {
   border-color: var(--accent-purple);
 }
 
+.feedback-textarea {
+  min-height: 120px;
+  resize: vertical;
+  line-height: 1.5;
+  font-family: var(--font-family);
+}
+
 .btn-icon, .btn-sm {
   border: 1px solid var(--border);
   background: transparent;

@@ -23,6 +23,11 @@
       <h1 class="logo-text">Weather Designer</h1>
     </div>
     <div class="topbar-actions">
+      <button class="btn-icon" id="btn-feedback" aria-label="意見回饋">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+      </button>
       <button class="btn-icon" id="btn-settings" aria-label="設定">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
@@ -134,6 +139,36 @@
         </select>
       </div>
       <button class="btn-primary" id="btn-save-settings">💾 儲存設定</button>
+    </div>
+  </div>
+
+  <!-- ===== 意見回饋彈窗 ===== -->
+  <div class="modal-overlay" id="feedback-overlay"></div>
+  <div class="modal" id="feedback-modal">
+    <div class="modal-header">
+      <h2>💬 意見回饋</h2>
+      <button class="btn-sm" id="btn-close-feedback">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label for="feedback-type">回饋類型</label>
+        <select id="feedback-type" class="form-input">
+          <option value="功能建議">💡 功能建議</option>
+          <option value="問題回報">🐞 問題回報</option>
+          <option value="介面設計">🎨 介面 / 設計</option>
+          <option value="其他">💬 其他</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="feedback-text">您的意見</label>
+        <textarea
+          id="feedback-text"
+          class="form-input feedback-textarea"
+          placeholder="請描述您的建議或遇到的問題，越具體越好…"
+        ></textarea>
+      </div>
+      <p class="form-hint">送出後會開啟 GitHub 頁面（需登入 GitHub 帳號），確認內容後按「Submit new issue」即完成。</p>
+      <button class="btn-primary" id="btn-submit-feedback">🚀 送出到 GitHub Issue</button>
     </div>
   </div>
 
