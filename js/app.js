@@ -31,11 +31,9 @@ const App = (() => {
    */
   function reloadPreview() {
     const iframe = $('app-preview');
-    if (!iframe) return;
-    // 把佔位字串換成真實 CWA 金鑰後才注入 iframe。
-    // 這樣 currentAppCode（會送給 AI）裡永遠只有佔位字串，金鑰不外洩。
-    const cwaKey = GeminiAPI.getCwaKey();
-    iframe.srcdoc = currentAppCode.replaceAll('__CWA_API_KEY__', cwaKey);
+    if (iframe) {
+      iframe.srcdoc = currentAppCode;
+    }
   }
 
   /**
@@ -96,7 +94,6 @@ const App = (() => {
 
   function openSettings() {
     $('api-key-input').value = GeminiAPI.getApiKey();
-    $('cwa-key-input').value = GeminiAPI.getCwaKey();
     $('model-select').value = GeminiAPI.getModel();
     $('settings-modal').classList.add('active');
     $('settings-overlay').classList.add('active');
@@ -109,7 +106,6 @@ const App = (() => {
 
   function saveSettings() {
     const key = $('api-key-input').value.trim();
-    const cwaKey = $('cwa-key-input').value.trim();
     const model = $('model-select').value;
 
     if (!key) {
@@ -118,12 +114,8 @@ const App = (() => {
     }
 
     GeminiAPI.setApiKey(key);
-    GeminiAPI.setCwaKey(cwaKey);
     GeminiAPI.setModel(model);
     closeSettings();
-
-    // CWA 金鑰可能變動，重新載入預覽讓真實天氣立即生效
-    reloadPreview();
     showToast('✅ 設定已儲存', 'success');
   }
 
