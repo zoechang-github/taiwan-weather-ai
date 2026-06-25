@@ -1,0 +1,16 @@
+# macOS
+.DS_Store
+
+# 編輯器 / IDE
+.vscode/
+.idea/
+*.swp
+
+# 本機環境與密鑰（切勿提交真正的 API Key！）
+.env
+.env.local
+*.key
+
+# 相依套件與建置產物（本專案目前不需要，先預留）
+node_modules/
+dist/
