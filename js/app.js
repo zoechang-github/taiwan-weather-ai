@@ -31,9 +31,11 @@ const App = (() => {
    */
   function reloadPreview() {
     const iframe = $('app-preview');
-    if (iframe) {
-      iframe.srcdoc = currentAppCode;
-    }
+    if (!iframe) return;
+    // 把佔位字串換成真實 CWA 金鑰後才注入 iframe。
+    // 這樣 currentAppCode（會送給 AI）裡永遠只有佔位字串，金鑰不外洩。
+    const cwaKey = GeminiAPI.getCwaKey();
+    iframe.srcdoc = currentAppCode.replaceAll('__CWA_API_KEY__', cwaKey);
   }
 
   /**
@@ -94,6 +96,7 @@ const App = (() => {
 
   function openSettings() {
     $('api-key-input').value = GeminiAPI.getApiKey();
+    $('cwa-key-input').value = GeminiAPI.getCwaKey();
     $('model-select').value = GeminiAPI.getModel();
     $('settings-modal').classList.add('active');
     $('settings-overlay').classList.add('active');
@@ -106,6 +109,7 @@ const App = (() => {
 
   function saveSettings() {
     const key = $('api-key-input').value.trim();
+    const cwaKey = $('cwa-key-input').value.trim();
     const model = $('model-select').value;
 
     if (!key) {
@@ -114,8 +118,12 @@ const App = (() => {
     }
 
     GeminiAPI.setApiKey(key);
+    GeminiAPI.setCwaKey(cwaKey);
     GeminiAPI.setModel(model);
     closeSettings();
+
+    // CWA 金鑰可能變動，重新載入預覽讓真實天氣立即生效
+    reloadPreview();
     showToast('✅ 設定已儲存', 'success');
   }
 
@@ -148,9 +156,8 @@ const App = (() => {
       return;
     }
 
-    if (!customText) {
-      input.value = '';
-    }
+    // 送出後一律清空輸入框
+    input.value = '';
 
     // 1. 新增使用者對話泡泡
     appendMessage('user', text);
@@ -187,7 +194,7 @@ const App = (() => {
         body.scrollTop = body.scrollHeight;
       },
       // onDone
-      () => {
+      (finishReason) => {
         $('btn-send').classList.remove('loading');
         currentController = null;
 
@@ -197,6 +204,11 @@ const App = (() => {
           proposedAppCode = codeBlock;
           $('ai-action-bar').style.display = 'block'; // 顯示套用按鈕
           showToast('✨ 程式碼修改完成，請點選下方套用按鈕！', 'success');
+        } else if (finishReason === 'MAX_TOKENS') {
+          // 輸出超過長度上限被截斷，程式碼不完整 → 明確告知使用者
+          showToast('⚠️ 回應太長被截斷，請改用 2.5 Flash/Pro 模型或簡化需求後再試', 'error');
+        } else {
+          showToast('ℹ️ 這次 AI 沒有產生可套用的程式碼', '');
         }
       },
       // onError
@@ -254,8 +266,10 @@ const App = (() => {
   }
 
   function extractCodeBlock(text) {
-    // 匹配 ```html ... ``` 區塊
-    const codeMatch = text.match(/```html\n([\s\S]*?)```/) || text.match(/```[\s\S]*?\n([\s\S]*?)```/);
+    // 匹配 ```html ... ``` 區塊（容許 html 後面有空白）
+    const codeMatch =
+      text.match(/```html\s*\n([\s\S]*?)```/) ||
+      text.match(/```[a-zA-Z]*\s*\n([\s\S]*?)```/);
     return codeMatch ? codeMatch[1].trim() : null;
   }
 
