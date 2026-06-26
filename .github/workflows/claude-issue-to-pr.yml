@@ -1,0 +1,39 @@
+name: Claude Issue to PR
+
+# 當有人開新 Issue、或幫 Issue 加上標籤時觸發
+on:
+  issues:
+    types: [opened, labeled]
+
+jobs:
+  claude-pr:
+    # 只有帶 feedback 標籤、或內文含 @claude 的 Issue 才會啟動，避免每則 Issue 都跑
+    if: |
+      contains(github.event.issue.labels.*.name, 'feedback') ||
+      (github.event.issue.body != null && contains(github.event.issue.body, '@claude'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write        # 允許 Claude 推送 commit
+      pull-requests: write   # 允許 Claude 開 PR
+      issues: write          # 允許 Claude 在 Issue 留言回報
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          # 用 Claude 訂閱（Pro/Max）的 OAuth token，不另外付 API 費用。
+          # 產生方式：本機跑 `claude setup-token`，再把 token 存成 repo secret。
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            這是一個純前端的「台灣天氣 App AI 協同設計沙盒」專案
+            （HTML + CSS + 原生 JavaScript，無框架）。
+
+            底下這則 GitHub Issue 是使用者透過 App 的「意見回饋」功能送出的需求或問題回報：
+            ${{ github.server_url }}/${{ github.repository }}/issues/${{ github.event.issue.number }}
+
+            請你：
+            1. 讀懂這則 Issue 想要的修改或回報的問題。
+            2. 在程式碼中實作對應的調整（遵守 CLAUDE.md 的規範）。
+            3. 開一個 Pull Request，標題與說明用繁體中文，並在 PR 內文連結回這則 Issue。
+            4. 若需求不清楚或無法安全實作，請在 Issue 留言說明原因，不要亂改。
+          claude_args: "--max-turns 10"
