@@ -219,6 +219,47 @@ const DefaultWeatherAppCode = `<!DOCTYPE html>
       text-align: center;
       opacity: 0.8;
     }
+
+    /* --- 未來七天預報 --- */
+    .forecast-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 16px;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.15);
+    }
+
+    .forecast-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+    }
+
+    .forecast-row {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .forecast-row::-webkit-scrollbar { display: none; }
+
+    .forecast-day {
+      flex: 0 0 auto;
+      min-width: 54px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .fc-week { font-size: 12px; color: var(--text-secondary); }
+    .fc-icon { font-size: 26px; }
+    .fc-temp { font-size: 12px; font-weight: 600; }
+    .fc-low { color: var(--text-secondary); font-weight: 500; }
   </style>
 </head>
 <body>
@@ -291,6 +332,12 @@ const DefaultWeatherAppCode = `<!DOCTYPE html>
     <div class="tip-card">
       <div class="tip-icon" id="tip-icon">💡</div>
       <div class="tip-text" id="tip-text">天氣炎熱，外出請注意防曬並多補充水分。</div>
+    </div>
+
+    <!-- 未來七天預報 -->
+    <div class="forecast-card">
+      <div class="forecast-title">未來七天</div>
+      <div class="forecast-row" id="forecast-row"></div>
     </div>
 
     <!-- 資料來源 -->
@@ -376,8 +423,8 @@ const DefaultWeatherAppCode = `<!DOCTYPE html>
       const url = OPEN_METEO
         + "?latitude=" + c[0] + "&longitude=" + c[1]
         + "&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m"
-        + "&daily=precipitation_probability_max"
-        + "&timezone=Asia%2FTaipei&forecast_days=1";
+        + "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max"
+        + "&timezone=Asia%2FTaipei&forecast_days=7";
 
       const res = await fetch(url);
       if (!res.ok) throw new Error("Open-Meteo " + res.status);
@@ -385,9 +432,18 @@ const DefaultWeatherAppCode = `<!DOCTYPE html>
 
       const cur = json.current;
       const code = cur.weather_code;
-      const rain = (json.daily && json.daily.precipitation_probability_max
-        && json.daily.precipitation_probability_max[0]) || 0;
+      const daily = json.daily;
+      const rain = (daily.precipitation_probability_max
+        && daily.precipitation_probability_max[0]) || 0;
       const info = wmoInfo(code);
+
+      // 整理出未來七天的預報陣列
+      const forecast = daily.time.map((date, i) => ({
+        date: date,
+        icon: wmoInfo(daily.weather_code[i]).icon,
+        high: Math.round(daily.temperature_2m_max[i]),
+        low: Math.round(daily.temperature_2m_min[i])
+      }));
 
       return {
         temp: Math.round(cur.temperature_2m),
@@ -397,8 +453,29 @@ const DefaultWeatherAppCode = `<!DOCTYPE html>
         humidity: cur.relative_humidity_2m,
         wind: Math.round(cur.wind_speed_10m / 3.6), // km/h → m/s
         bg: pickBg(code, rain),
-        tip: makeTip(cur.temperature_2m, rain, code)
+        tip: makeTip(cur.temperature_2m, rain, code),
+        forecast: forecast
       };
+    }
+
+    // 星期標籤：第一天顯示「今天」，其餘顯示週幾
+    function weekdayLabel(dateStr, idx) {
+      if (idx === 0) return "今天";
+      const names = ["週日", "週一", "週二", "週三", "週四", "週五", "週六"];
+      return names[new Date(dateStr + "T00:00:00").getDay()];
+    }
+
+    // 後備：示範資料沒有真實七天，依基準溫度產生簡單的七天
+    function buildMockForecast(base) {
+      const today = new Date();
+      const arr = [];
+      for (let i = 0; i < 7; i++) {
+        const dt = new Date(today);
+        dt.setDate(today.getDate() + i);
+        const iso = dt.toISOString().slice(0, 10);
+        arr.push({ date: iso, icon: "⛅", high: base + 1, low: base - 5 });
+      }
+      return arr;
     }
 
     // --- DOM 綁定 ---
@@ -412,6 +489,18 @@ const DefaultWeatherAppCode = `<!DOCTYPE html>
     const windVal = document.getElementById('wind-val');
     const tipText = document.getElementById('tip-text');
     const sourceTag = document.getElementById('source-tag');
+    const forecastRow = document.getElementById('forecast-row');
+
+    function renderForecast(days) {
+      forecastRow.innerHTML = days.map((d, i) =>
+        '<div class="forecast-day">'
+        + '<div class="fc-week">' + weekdayLabel(d.date, i) + '</div>'
+        + '<div class="fc-icon">' + d.icon + '</div>'
+        + '<div class="fc-temp">' + d.high + '°</div>'
+        + '<div class="fc-temp fc-low">' + d.low + '°</div>'
+        + '</div>'
+      ).join('');
+    }
 
     function render(d, source) {
       locText.textContent = d.county;
@@ -423,6 +512,7 @@ const DefaultWeatherAppCode = `<!DOCTYPE html>
       windVal.textContent = d.wind + " m/s";
       tipText.textContent = d.tip;
       sourceTag.textContent = source;
+      renderForecast(d.forecast);
       document.body.style.background = d.bg;
     }
 
@@ -439,6 +529,8 @@ const DefaultWeatherAppCode = `<!DOCTYPE html>
       if (!data) data = mockData[county];
       if (!data) return;
       data.county = county;
+      // 示範資料沒有真實七天預報，補上一份
+      if (!data.forecast) data.forecast = buildMockForecast(data.temp);
       render(data, source);
     }
 
